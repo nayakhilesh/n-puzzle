@@ -36,8 +36,11 @@ Sample Input:
 Sample Output:
 
 20<br />
-RIGHT<br />
 DOWN<br />
+DOWN<br />
+RIGHT<br />
+RIGHT<br />
+UP<br />
 ...<br />
 ...<br />
 ...
