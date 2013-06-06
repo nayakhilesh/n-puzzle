@@ -1,7 +1,8 @@
 n-puzzle
 ========
 
-Solver for an 'n' sized 15 puzzle (http://en.wikipedia.org/wiki/15_puzzle)
+Solver for an 'n' sized 15 puzzle (http://en.wikipedia.org/wiki/15_puzzle)<br />
+Uses the A* algorithm with the sum of the Manhattan Distances of all tiles from their goal positions as the heuristic
 
 Input Format:
 
