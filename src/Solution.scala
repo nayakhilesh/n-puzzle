@@ -148,13 +148,16 @@ object Solution {
       candidateMoves foreach {
         move =>
           val newGameState = currentGameState copyAndMakeMove move
-          if (!visitedBoards.contains(newGameState.board))
+          if (!visitedBoards.contains(newGameState.board)) {
             pq add newGameState
+            visitedBoards += (newGameState.board -> newGameState)
+          }
           else {
             val oldGameState = visitedBoards(newGameState.board)
             if (newGameState.currDist < oldGameState.currDist) {
               pq remove oldGameState
               pq add newGameState
+              visitedBoards += (newGameState.board -> newGameState)
             }
           }
       }
