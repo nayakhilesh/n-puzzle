@@ -3,6 +3,8 @@ package scala
 import scala.Array.canBuildFrom
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
+import scala.compat.Platform
+import main.UpdatablePriorityQueue
 
 object Solution {
 
@@ -12,7 +14,8 @@ object Solution {
   val LEFT = 3
 
   class GameState(val board: Array[Int], private[this] val zeroIndex: Int,
-    val currDist: Int, private var sumOfManhattanDistsToGoal: Int = -1) extends Ordered[GameState] {
+    val currDist: Int, private var sumOfManhattanDistsToGoal: Int = -1)
+    extends Ordered[GameState] with Equals {
 
     if (sumOfManhattanDistsToGoal == -1)
       sumOfManhattanDistsToGoal = getSumOfManhattanDistsToGoal
@@ -54,16 +57,19 @@ object Solution {
 
       var sum = 0
       for ((value, index) <- board zipWithIndex) {
-        sum += math.abs(value / GameState.n - index / GameState.n) + math.abs(value % GameState.n - index % GameState.n)
+        sum += math.abs(value / GameState.n - index / GameState.n) +
+          math.abs(value % GameState.n - index % GameState.n)
       }
 
       sum
     }
 
     def compare(other: GameState) =
-      (this.currDist + this.sumOfManhattanDistsToGoal) - (other.currDist + other.sumOfManhattanDistsToGoal)
+      (this.currDist + this.sumOfManhattanDistsToGoal) -
+        (other.currDist + other.sumOfManhattanDistsToGoal)
 
-    private[this] def copyAndSwapIndexes(board: Array[Int], index1: Int, index2: Int): Array[Int] = {
+    private[this] def copyAndSwapIndexes(board: Array[Int], index1: Int,
+      index2: Int): Array[Int] = {
       val newBoard = board.clone
 
       val temp = newBoard(index1)
@@ -91,6 +97,25 @@ object Solution {
       listOfMoves.toSeq
     }
 
+    def canEqual(other: Any) = {
+      other.isInstanceOf[scala.Solution.GameState]
+    }
+
+    override def equals(other: Any) = {
+      other match {
+        case that: scala.Solution.GameState => that.canEqual(GameState.this) &&
+          board == that.board && currDist == that.currDist &&
+          sumOfManhattanDistsToGoal == that.sumOfManhattanDistsToGoal
+        case _ => false
+      }
+    }
+
+    override def hashCode() = {
+      val prime = 41
+      prime * (prime * (prime + board.hashCode) + currDist.hashCode) +
+        sumOfManhattanDistsToGoal.hashCode
+    }
+
   }
 
   object GameState {
@@ -108,9 +133,11 @@ object Solution {
     (0 to n * n - 1) foreach (input.update(_, (readLine toInt)))
 
     val zeroIndex = input indexOf (0)
+
+    val start = Platform.currentTime
+
     val initialGameState = new GameState(input, zeroIndex, 0)
-    val pq = new java.util.PriorityQueue[GameState]
-    pq add initialGameState
+    val pq = new UpdatablePriorityQueue[GameState]
 
     val visitedBoards = collection.mutable.Map[Array[Int], GameState]()
     visitedBoards += (initialGameState.board -> initialGameState)
@@ -119,8 +146,9 @@ object Solution {
     cameFrom += (input -> null)
 
     // TODO identify impossible input configurations
+    // TODO write UpdatablePriorityQueue.scala?
 
-    var currentGameState: GameState = initialGameState
+    var currentGameState = initialGameState
     while (currentGameState != null && !isGoal(currentGameState.board)) {
 
       val candidateMoves = currentGameState.getCandidateMoves
@@ -135,8 +163,8 @@ object Solution {
           } else {
             val oldGameState = visitedBoards(newGameState.board)
             if (newGameState.currDist < oldGameState.currDist) {
-              pq remove oldGameState
-              pq add newGameState
+              if (pq contains oldGameState)
+                pq.replace(oldGameState, newGameState)
               visitedBoards += (newGameState.board -> newGameState)
               cameFrom += (newGameState.board -> (currentGameState.board,
                 move))
@@ -147,15 +175,13 @@ object Solution {
 
     }
 
-    // TODO check
-    def follow(board: Array[Int]): List[Int] = board match {
-      case null => List.empty[Int]
-      case board => 
-        val (newBoard, move) = cameFrom(board)
-        follow(newBoard) :+ move
-    }
+    def follow(board: Array[Int]): collection.mutable.Queue[Int] =
+      cameFrom(board) match {
+        case null => collection.mutable.Queue.empty[Int]
+        case (newBoard, move) =>
+          follow(newBoard) :+ move
+      }
     val moves = follow(currentGameState.board)
-    //
 
     println(moves.size);
 
@@ -165,6 +191,10 @@ object Solution {
       case DOWN => println("DOWN")
       case LEFT => println("LEFT")
     }
+
+    val end = Platform.currentTime
+
+    println((end - start) / 1000.0 + "s")
 
   }
 
