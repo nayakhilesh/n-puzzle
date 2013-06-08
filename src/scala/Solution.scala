@@ -1,3 +1,5 @@
+package scala
+
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
