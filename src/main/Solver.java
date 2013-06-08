@@ -62,8 +62,7 @@ public class Solver {
 
 		GameState initialGameState = new GameState(input, zeroIndex, 0);
 		UpdatablePriorityQueue<GameState> pq = new UpdatablePriorityQueue<GameState>();
-		pq.add(initialGameState);
-
+		
 		Map<IntArrayWrapper, GameState> visitedBoards = new HashMap<IntArrayWrapper, GameState>();
 		visitedBoards.put(inputWrapper, initialGameState);
 
