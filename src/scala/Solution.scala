@@ -1,26 +1,26 @@
 package scala
 
-import scala.collection.immutable.Queue
-import scala.collection.mutable.ArrayBuffer
+import scala.Array.canBuildFrom
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
 object Solution {
 
-  val UP = "UP"
-  val RIGHT = "RIGHT"
-  val DOWN = "DOWN"
-  val LEFT = "LEFT"
+  val UP = 1
+  val RIGHT = 2
+  val DOWN = 4
+  val LEFT = 3
 
-  class GameState(val board: Seq[Int], private[this] val zeroIndex: Int, val moves: Seq[String],
+  class GameState(val board: Array[Int], private[this] val zeroIndex: Int,
     val currDist: Int, private var sumOfManhattanDistsToGoal: Int = -1) extends Ordered[GameState] {
 
     if (sumOfManhattanDistsToGoal == -1)
       sumOfManhattanDistsToGoal = getSumOfManhattanDistsToGoal
 
-    def copyAndMakeMove(move: String): GameState = {
+    def copyAndMakeMove(move: Int): GameState = {
 
-      val (row, col) = getRowCol(zeroIndex)
+      val row = zeroIndex / GameState.n
+      val col = zeroIndex % GameState.n
 
       val (targetRow, targetCol) = move match {
         case Solution.UP => (row - 1, col)
@@ -29,11 +29,12 @@ object Solution {
         case Solution.LEFT => (row, col - 1)
       }
 
-      val targetIndex = getIndex(targetRow, targetCol)
+      val targetIndex = targetRow * GameState.n + targetCol
       val targetValue = board(targetIndex)
 
-      val (targetGoalRow, targetGoalCol) = getRowCol(targetValue)
-      val targetMove = getOppMove(move)
+      val targetGoalRow = targetValue / GameState.n
+      val targetGoalCol = targetValue % GameState.n
+      val targetMove = 5 - move
 
       val isZeroCloser = (row > 0 && move == Solution.UP) ||
         (col > 0 && move == Solution.LEFT)
@@ -43,41 +44,28 @@ object Solution {
         (targetCol - targetGoalCol < 0 && targetMove == Solution.RIGHT);
 
       val newBoard = copyAndSwapIndexes(board, zeroIndex, targetIndex)
-      val newZeroIndex = targetIndex
-      val newMoves = moves :+ move
-      val newCurrDist = currDist + 1
       val newSumOfManhattanDistsToGoal = sumOfManhattanDistsToGoal +
         (if (isZeroCloser) -1 else 1) + (if (isTargetCloser) -1 else 1)
 
-      new GameState(newBoard, newZeroIndex, newMoves, newCurrDist, newSumOfManhattanDistsToGoal)
+      new GameState(newBoard, targetIndex, currDist + 1, newSumOfManhattanDistsToGoal)
     }
 
     private[this] def getSumOfManhattanDistsToGoal: Int = {
 
       var sum = 0
       for ((value, index) <- board zipWithIndex) {
-        sum += getManhattanDistToGoal(value, index)
+        sum += math.abs(value / GameState.n - index / GameState.n) + math.abs(value % GameState.n - index % GameState.n)
       }
 
       sum
     }
 
-    private[this] def getManhattanDistToGoal(value: Int, index: Int): Int = {
-      val (goalRow, goalCol) = getRowCol(value)
-      val (row, col) = getRowCol(index)
-      math.abs(goalRow - row) + math.abs(goalCol - col)
-    }
-
     def compare(other: GameState) =
       (this.currDist + this.sumOfManhattanDistsToGoal) - (other.currDist + other.sumOfManhattanDistsToGoal)
 
-    private[this] def getRowCol(index: Int): (Int, Int) =
-      (index / GameState.n, index % GameState.n)
+    private[this] def copyAndSwapIndexes(board: Array[Int], index1: Int, index2: Int): Array[Int] = {
+      val newBoard = board.clone
 
-    private[this] def copyAndSwapIndexes(board: Seq[Int], index1: Int, index2: Int): Seq[Int] = {
-      val newBoard = new ArrayBuffer[Int]
-
-      board foreach { newBoard append _ }
       val temp = newBoard(index1)
       newBoard(index1) = newBoard(index2)
       newBoard(index2) = temp
@@ -85,24 +73,12 @@ object Solution {
       newBoard
     }
 
-    private[this] def getOppMove(move: String): String = {
-      move match {
-        case Solution.UP => Solution.DOWN
-        case Solution.RIGHT => Solution.LEFT
-        case Solution.DOWN => Solution.UP
-        case Solution.LEFT => Solution.RIGHT
-      }
-    }
+    def getCandidateMoves: Seq[Int] = {
 
-    private[this] def getIndex(row: Int, col: Int): Int = {
-      (row * 3) + col
-    }
+      val listOfMoves = new ListBuffer[Int]
 
-    def getCandidateMoves: Seq[String] = {
-
-      val listOfMoves = new ListBuffer[String]()
-
-      val (row, col) = getRowCol(zeroIndex)
+      val row = zeroIndex / GameState.n
+      val col = zeroIndex % GameState.n
       if (row != 0)
         listOfMoves += Solution.UP
       if (row != GameState.n - 1)
@@ -127,24 +103,26 @@ object Solution {
 
     val n = (readLine toInt)
     GameState.n = n
-    val input = new ArrayBuffer[Int]
+    val input = new Array[Int](n * n)
 
-    (1 to n * n) foreach (_ => input append (readLine toInt))
+    (0 to n * n - 1) foreach (input.update(_, (readLine toInt)))
 
     val zeroIndex = input indexOf (0)
-    val initialGameState = new GameState(input, zeroIndex, Queue.empty[String], 0)
+    val initialGameState = new GameState(input, zeroIndex, 0)
     val pq = new java.util.PriorityQueue[GameState]
     pq add initialGameState
 
-    val visitedBoards = collection.mutable.Map[Seq[Int], GameState]()
+    val visitedBoards = collection.mutable.Map[Array[Int], GameState]()
     visitedBoards += (initialGameState.board -> initialGameState)
+
+    val cameFrom = collection.mutable.Map[Array[Int], (Array[Int], Int)]()
+    cameFrom += (input -> null)
 
     // TODO identify impossible input configurations
 
-    var currentGameState: GameState = null
-    do {
+    var currentGameState: GameState = initialGameState
+    while (currentGameState != null && !isGoal(currentGameState.board)) {
 
-      currentGameState = pq poll
       val candidateMoves = currentGameState.getCandidateMoves
 
       candidateMoves foreach {
@@ -153,26 +131,44 @@ object Solution {
           if (!visitedBoards.contains(newGameState.board)) {
             pq add newGameState
             visitedBoards += (newGameState.board -> newGameState)
-          }
-          else {
+            cameFrom += (newGameState.board -> (currentGameState.board, move))
+          } else {
             val oldGameState = visitedBoards(newGameState.board)
             if (newGameState.currDist < oldGameState.currDist) {
               pq remove oldGameState
               pq add newGameState
               visitedBoards += (newGameState.board -> newGameState)
+              cameFrom += (newGameState.board -> (currentGameState.board,
+                move))
             }
           }
       }
+      currentGameState = pq poll
 
-    } while (!isGoal(currentGameState.board))
+    }
 
-    val solution = currentGameState.moves
-    println(solution.size)
-    solution foreach { println(_) }
+    // TODO check
+    def follow(board: Array[Int]): List[Int] = board match {
+      case null => List.empty[Int]
+      case board => 
+        val (newBoard, move) = cameFrom(board)
+        follow(newBoard) :+ move
+    }
+    val moves = follow(currentGameState.board)
+    //
+
+    println(moves.size);
+
+    moves foreach {
+      case UP => println("UP")
+      case RIGHT => println("RIGHT")
+      case DOWN => println("DOWN")
+      case LEFT => println("LEFT")
+    }
 
   }
 
-  def isGoal(board: Seq[Int]): Boolean = {
+  def isGoal(board: Array[Int]): Boolean = {
 
     for ((value, index) <- board zipWithIndex) {
       if (value != index)
