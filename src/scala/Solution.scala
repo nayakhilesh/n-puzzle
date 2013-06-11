@@ -56,9 +56,10 @@ object Solution {
     private[this] def getSumOfManhattanDistsToGoal: Int = {
 
       var sum = 0
-      for ((value, index) <- board zipWithIndex) {
-        sum += math.abs(value / GameState.n - index / GameState.n) +
-          math.abs(value % GameState.n - index % GameState.n)
+      (board zipWithIndex) foreach {
+        case (value, index) =>
+          sum += math.abs(value / GameState.n - index / GameState.n) +
+            math.abs(value % GameState.n - index % GameState.n)
       }
 
       sum
@@ -200,9 +201,10 @@ object Solution {
 
   def isGoal(board: Array[Int]): Boolean = {
 
-    for ((value, index) <- board zipWithIndex) {
-      if (value != index)
-        return false
+    (board zipWithIndex) foreach {
+      case (value, index) =>
+        if (value != index)
+          return false
     }
 
     true
